@@ -84,7 +84,7 @@ The API supports the following customization options:
 
 1. Clone the repository
    ```
-   git clone https://github.com/yourusername/puttext-api.git
+   git clone https://github.com/mvarenitsyn/puttext-api.git
    cd puttext-api
    ```
 
