@@ -84,7 +84,7 @@ The API supports the following customization options:
 
 1. Clone the repository
    ```
-   git clone https://github.com/mvarenitsyn/puttext-api.git
+   git clone https://github.com/yourusername/puttext-api.git
    cd puttext-api
    ```
 
@@ -105,13 +105,16 @@ The API supports the following customization options:
 
 ## Deployment to Railway
 
-This project is ready to be deployed to Railway. Here's how:
+This project is ready to be deployed to Railway using Docker. Here's how:
 
-1. Push this repository to GitHub
+1. The repository already includes a Dockerfile that handles all necessary dependencies
 2. Create a new Railway project
 3. Connect your GitHub repository
-4. Railway will automatically detect the Node.js app and deploy it
-5. Add any necessary environment variables in the Railway dashboard
+4. Select "Deploy from Dockerfile" during setup
+5. Railway will build and deploy the Docker container
+6. Add any necessary environment variables in the Railway dashboard
+
+> **Note:** We use Docker for deployment because the canvas package requires specific system dependencies (like Cairo graphics library) that may not be available in all environments.
 
 ## Development
 
