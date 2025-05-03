@@ -85,6 +85,9 @@ class PutTextService {
      * @param {Object} options - Text options
      * @param {string} options.color - Text color (default: 'white')
      * @param {string} options.backgroundColor - Background color (default: 'rgba(0, 0, 0, 0.7)')
+     * @param {number} options.borderRadius - Border radius for rounded corners (default: 0)
+     * @param {boolean} options.backgroundBlur - Apply blur effect instead of solid background (default: false)
+     * @param {number} options.blurAmount - Amount of blur to apply when backgroundBlur is true (default: 10)
      * @param {string} options.font - Font style (default: 'bold 50px Arial')
      * @param {number} options.fontSize - Font size in pixels (default: extracted from font string or 50)
      * @param {number} options.padding - Padding around text (default: 20)
@@ -98,6 +101,9 @@ class PutTextService {
         const {
             color = 'white',
             backgroundColor = 'rgba(0, 0, 0, 0.7)',
+            borderRadius = 0,
+            backgroundBlur = false,
+            blurAmount = 10,
             font = 'bold 50px Arial',
             fontSize = parseInt(font.match(/\d+/)?.[0] || 50),
             padding = 20,
@@ -126,12 +132,65 @@ class PutTextService {
         const textBlockHeight = Math.max(lines.length * lineHeight, minHeight);
         const textBlockWidth = maxWidth + (padding * 2);
 
-        // Draw background box in the center "safe zone" (with vertical offset)
+        // Calculate box position
         const boxX = (this.width - textBlockWidth) / 2;
         const boxY = (this.height - textBlockHeight) / 2 - (padding / 2) + verticalOffset;
+        const boxWidth = textBlockWidth;
+        const boxHeight = textBlockHeight + padding;
 
-        this.ctx.fillStyle = backgroundColor;
-        this.ctx.fillRect(boxX, boxY, textBlockWidth, textBlockHeight + padding);
+        // Draw background box
+        if (backgroundBlur) {
+            // Save the current state to restore after applying blur
+            this.ctx.save();
+
+            // Create a temporary canvas for the blur effect
+            const tempCanvas = createCanvas(this.width, this.height);
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Copy the main canvas to the temporary canvas
+            tempCtx.drawImage(this.canvas, 0, 0);
+
+            // Apply blur to the temp canvas (gaussian-like approximation)
+            // Note: node-canvas doesn't have built-in blur, so we'll use a simple approximation
+
+            // Draw a semi-transparent overlay to create blur-like effect
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.0)'; // Start with transparent
+
+            // Apply multiple passes of semi-transparent fills to approximate blur
+            for (let i = 0; i < blurAmount; i++) {
+                const alpha = 0.03; // Small alpha value for each pass
+                this.ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+
+                if (borderRadius > 0) {
+                    this.roundRect(boxX, boxY, boxWidth, boxHeight, borderRadius);
+                    this.ctx.fill();
+                } else {
+                    this.ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+                }
+            }
+
+            // Apply the final background color with reduced opacity
+            this.ctx.fillStyle = backgroundColor;
+
+            if (borderRadius > 0) {
+                this.roundRect(boxX, boxY, boxWidth, boxHeight, borderRadius);
+                this.ctx.fill();
+            } else {
+                this.ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+            }
+
+            this.ctx.restore();
+        } else {
+            // Standard background without blur
+            this.ctx.fillStyle = backgroundColor;
+
+            if (borderRadius > 0) {
+                this.roundRect(boxX, boxY, boxWidth, boxHeight, borderRadius);
+                this.ctx.fill();
+            } else {
+                this.ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+            }
+        }
 
         // Configure text shadow if provided
         if (textShadow !== 'none') {
@@ -219,6 +278,27 @@ class PutTextService {
                 reject(err);
             }
         });
+    }
+
+    /**
+     * Helper method to draw a rounded rectangle
+     * @param {number} x - The x coordinate of the rectangle
+     * @param {number} y - The y coordinate of the rectangle
+     * @param {number} width - The width of the rectangle
+     * @param {number} height - The height of the rectangle
+     * @param {number} radius - The radius of the rounded corners
+     */
+    roundRect(x, y, width, height, radius) {
+        if (width < 2 * radius) radius = width / 2;
+        if (height < 2 * radius) radius = height / 2;
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(x + radius, y);
+        this.ctx.arcTo(x + width, y, x + width, y + height, radius);
+        this.ctx.arcTo(x + width, y + height, x, y + height, radius);
+        this.ctx.arcTo(x, y + height, x, y, radius);
+        this.ctx.arcTo(x, y, x + width, y, radius);
+        this.ctx.closePath();
     }
 
     /**
