@@ -140,36 +140,54 @@ class PutTextService {
 
         // Draw background box
         if (backgroundBlur) {
-            // Save the current state to restore after applying blur
+            // Save the current state
             this.ctx.save();
 
-            // Create a temporary canvas for the blur effect
-            const tempCanvas = createCanvas(this.width, this.height);
-            const tempCtx = tempCanvas.getContext('2d');
+            // Create a solid background with rounded corners first
+            this.ctx.fillStyle = backgroundColor;
 
-            // Copy the main canvas to the temporary canvas
-            tempCtx.drawImage(this.canvas, 0, 0);
+            if (borderRadius > 0) {
+                this.roundRect(boxX, boxY, boxWidth, boxHeight, borderRadius);
+                this.ctx.fill();
+            } else {
+                this.ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+            }
 
-            // Apply blur to the temp canvas (gaussian-like approximation)
-            // Note: node-canvas doesn't have built-in blur, so we'll use a simple approximation
+            // Now create a blurred edge effect by drawing progressively larger 
+            // semi-transparent outlines around the text box
+            const maxBlurDistance = blurAmount;
+            const blurSteps = 15; // Number of gradient steps for the blur effect
 
-            // Draw a semi-transparent overlay to create blur-like effect
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.0)'; // Start with transparent
+            for (let i = 1; i <= blurSteps; i++) {
+                // Calculate growing size for each step
+                const growSize = (i / blurSteps) * maxBlurDistance;
 
-            // Apply multiple passes of semi-transparent fills to approximate blur
-            for (let i = 0; i < blurAmount; i++) {
-                const alpha = 0.03; // Small alpha value for each pass
-                this.ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+                // Calculate decreasing opacity for each step
+                const alpha = 0.5 * (1 - (i / blurSteps));
 
+                // Expanded rectangle coordinates
+                const expandedX = boxX - growSize;
+                const expandedY = boxY - growSize;
+                const expandedWidth = boxWidth + (growSize * 2);
+                const expandedHeight = boxHeight + (growSize * 2);
+
+                // Set the expanded rect style with decreasing opacity
+                const bgColor = backgroundColor.includes('rgba') ?
+                    backgroundColor.replace(/rgba\([^,]+,[^,]+,[^,]+,[^)]+\)/, `rgba(0,0,0,${alpha})`) :
+                    `rgba(0,0,0,${alpha})`;
+
+                this.ctx.fillStyle = bgColor;
+
+                // Draw the expanded rectangle with rounded corners
                 if (borderRadius > 0) {
-                    this.roundRect(boxX, boxY, boxWidth, boxHeight, borderRadius);
+                    this.roundRect(expandedX, expandedY, expandedWidth, expandedHeight, borderRadius + growSize);
                     this.ctx.fill();
                 } else {
-                    this.ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+                    this.ctx.fillRect(expandedX, expandedY, expandedWidth, expandedHeight);
                 }
             }
 
-            // Apply the final background color with reduced opacity
+            // Redraw the main background box to ensure it's solid
             this.ctx.fillStyle = backgroundColor;
 
             if (borderRadius > 0) {
